@@ -6,6 +6,7 @@ from OceanOptics_measurement import OceanOpticsMeasure
 import pyqtgraph as pg
 import numpy as np
 import time
+import pickle
 
 class PiezoStageMeasure(Measurement):
 	
@@ -33,14 +34,14 @@ class PiezoStageMeasure(Measurement):
 		# This setting allows the option to save data to an h5 data file during a run
 		# All settings are automatically added to the Microscope user interface
 
-		self.settings.New('x_start', dtype=float, unit='um', initial=0)
-		self.settings.New('y_start', dtype=float, unit='um', initial=0)
+		self.settings.New('x_start', dtype=float, unit='um', vmin=0)
+		self.settings.New('y_start', dtype=float, unit='um', vmin=0)
 	
-		self.settings.New('x_size', dtype=float, initial=0, unit='um')
-		self.settings.New('y_size', dtype=float, initial=0, unit='um')
+		self.settings.New('x_size', dtype=float, initial=1, unit='um', vmin=1)
+		self.settings.New('y_size', dtype=float, initial=1, unit='um', vmin=1)
 
-		self.settings.New('x_step', dtype=float, initial=0, unit='um')
-		self.settings.New('y_step', dtype=float, initial=0, unit='um')
+		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=1)
+		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=1)
 
 		self.settings.New('x_abs', dtype=float, initial=0, unit='um')
 		self.settings.New('y_abs', dtype=float, initial=0, unit='um')
@@ -135,18 +136,6 @@ class PiezoStageMeasure(Measurement):
 		
 		x_step = self.settings['x_step']
 		y_step = self.settings['y_step']
-		
-		if y_scan_size == 0:
-			y_scan_size = 1
-		
-		if x_scan_size == 0:
-			x_scan_size = 1
-		
-		if y_step == 0:
-			y_step = 1
-			
-		if x_step == 0:
-			x_step = 1
 			
 		y_range = int(np.ceil(y_scan_size/y_step))
 		x_range = int(np.ceil(x_scan_size/x_step))

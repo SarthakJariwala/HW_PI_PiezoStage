@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1233</width>
-    <height>661</height>
+    <width>1532</width>
+    <height>1165</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,8 +19,8 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>1211</width>
-      <height>581</height>
+      <width>1251</width>
+      <height>751</height>
      </rect>
     </property>
     <property name="title">
@@ -542,18 +542,14 @@
       <rect>
        <x>730</x>
        <y>40</y>
-       <width>471</width>
-       <height>301</height>
+       <width>501</width>
+       <height>401</height>
       </rect>
      </property>
      <property name="title">
       <string>Plot</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="0">
-       <layout class="QVBoxLayout" name="verticalLayout_3"/>
-      </item>
-     </layout>
+     <layout class="QGridLayout" name="gridLayout_4"/>
     </widget>
     <widget class="QProgressBar" name="progressBar">
      <property name="geometry">
@@ -588,7 +584,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1233</width>
+     <width>1532</width>
      <height>31</height>
     </rect>
    </property>
