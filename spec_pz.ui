@@ -19,8 +19,8 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>1251</width>
-      <height>751</height>
+      <width>731</width>
+      <height>931</height>
      </rect>
     </property>
     <property name="title">
@@ -547,10 +547,10 @@
     <widget class="QGroupBox" name="plot_groupBox">
      <property name="geometry">
       <rect>
-       <x>730</x>
-       <y>40</y>
-       <width>501</width>
-       <height>401</height>
+       <x>0</x>
+       <y>590</y>
+       <width>711</width>
+       <height>321</height>
       </rect>
      </property>
      <property name="title">
