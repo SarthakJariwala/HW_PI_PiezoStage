@@ -103,7 +103,7 @@ class PiezoStageMeasure(Measurement):
 		This function runs repeatedly and automatically during the measurement run.
 		its update frequency is defined by self.display_update_period
 		"""
-		if hasattr(self, 'spec') and hasattr(self, 'pi_device'):
+		if hasattr(self, 'spec') and hasattr(self, 'pi_device') and hasattr(self, 'y'):
 			self.plot.plot(self.spec.wavelengths(), self.y, pen='r', clear=True)
 			pg.QtGui.QApplication.processEvents()
 
@@ -140,26 +140,26 @@ class PiezoStageMeasure(Measurement):
 		k = 0
 		for i in range(y_range):
 			for j in range(x_range):
-				if not self.interrupt_measurement_called:
+				if self.interrupt_measurement_called:
 					break
 				self._read_spectrometer()
 				data_array[k,:] = self.y
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
-				self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
-				self.ui.progressBar.setValue(100*((k+1)/(x_range*y_range)))
+				#self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
+				##self.ui.progressBar.setValue(100*((k+1)/(x_range*y_range)))
 				k+=1
 
 			# TODO
 			# if statement needs to be modified to keep the stage at the finish y-pos for line scans in x, and same for y
 			if i == y_range-1: # this if statement is there to keep the stage at the finish position (in x) and not bring it back like we were doing during the scan 
 				self.pi_device.MVR(axes=self.axes[1], values=[y_step])
-				self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
+				#self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
 			else:
 				self.pi_device.MVR(axes=self.axes, values=[-x_scan_size, y_step])
-				self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
-				self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
+				#self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
+				#self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
 
-			if not self.interrupt_measurement_called:
+			if self.interrupt_measurement_called:
 				break
 
 		save_dict = {"Wavelengths": self.spec.wavelengths(), "Intensities": data_array,
@@ -172,7 +172,7 @@ class PiezoStageMeasure(Measurement):
 				 }
 	
 		pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
-
+	
 	def save_single_spec(self):
 		save_array = np.zeros(shape=(2048,2))
 		save_array[:,1] = self.y
