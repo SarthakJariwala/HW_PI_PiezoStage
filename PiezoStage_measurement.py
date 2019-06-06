@@ -146,7 +146,9 @@ class PiezoStageMeasure(Measurement):
 				data_array[k,:] = self.y
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 				#self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
-				##self.ui.progressBar.setValue(100*((k+1)/(x_range*y_range)))
+				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
+				print(100*((k+1)/(x_range*y_range)))
+				self.pi_device_hw.read_from_hardware()
 				k+=1
 
 			# TODO
@@ -154,10 +156,12 @@ class PiezoStageMeasure(Measurement):
 			if i == y_range-1: # this if statement is there to keep the stage at the finish position (in x) and not bring it back like we were doing during the scan 
 				self.pi_device.MVR(axes=self.axes[1], values=[y_step])
 				#self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
+				self.pi_device_hw.read_from_hardware()
 			else:
 				self.pi_device.MVR(axes=self.axes, values=[-x_scan_size, y_step])
 				#self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
 				#self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
+				self.pi_device_hw.read_from_hardware()
 
 			if self.interrupt_measurement_called:
 				break
