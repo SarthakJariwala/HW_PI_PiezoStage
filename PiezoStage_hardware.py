@@ -45,10 +45,6 @@ class PiezoStageHW(HardwareComponent):
         self.pi_device.SVO(axes=self.axes, values=[True,True])	# Turn on servo control for both axes
         #self.ui.status_textBrowser.append("Current Stage Position:\n{}".format(self.pi_device.qPOS(axes=self.axes)))
 #        print(self.pi_device.qPOS(axes=self.axes))
-
-        self.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
-        self.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
-
         
         #Connect settings to hardware:
         LQ = self.settings.as_dict()
@@ -61,7 +57,7 @@ class PiezoStageHW(HardwareComponent):
         
         LQ["x_pos"].hardware_set_func = self.rel_mov
         LQ["y_pos"].hardware_set_func = self.rel_mov
-    
+		
         #Take an initial sample of the data.
         self.read_from_hardware()
         
@@ -76,18 +72,21 @@ class PiezoStageHW(HardwareComponent):
     def center_piezo(self):
         if hasattr(self, 'pi_device'):
             self.pi_device.MOV(axes=self.axes, values=[50,50])
+            self.read_from_hardware()
 
     def abs_mov(self):
         if hasattr(self, 'pi_device'):
             x_abs_pos = self.settings['x_abs']
             y_abs_pos = self.settings['y_abs']
             self.pi_device.MOV(axes=self.axes, values=[x_abs_pos,y_abs_pos])
+            self.read_from_hardware()
         
     def rel_mov(self):
         if hasattr(self, 'pi_device'):
             x_rel_pos = self.settings['x_rel']
             y_rel_pos = self.settings['y_rel']
             self.pi_device.MVR(axes=self.axes, values=[x_rel_pos,y_rel_pos])
+            self.read_from_hardware()
 
     def getX(self):
         return self.pi_device.qPOS(axes=self.axes)['1']
