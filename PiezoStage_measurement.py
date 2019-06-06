@@ -109,9 +109,6 @@ class PiezoStageMeasure(Measurement):
 		# # Create PlotDataItem object ( a scatter plot on the axes )
 		self.optimize_plot_line = self.plot.plot([0])
 
-		self.pi_device = self.pi_device_hw.pi_device
-		self.spec = self.spec_hw.spec
-
 	def update_display(self):
 		"""
 		Displays (plots) the numpy array self.buffer. 
@@ -128,6 +125,8 @@ class PiezoStageMeasure(Measurement):
 		It should not update the graphical interface directly, and should only
 		focus on data acquisition.
 		"""
+		self.pi_device = self.pi_device_hw.pi_device
+		self.spec = self.spec_hw.spec
 
 		x_start = self.settings['x_start']
 		y_start = self.settings['y_start']
