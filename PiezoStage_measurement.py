@@ -43,8 +43,8 @@ class PiezoStageMeasure(Measurement):
 		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=1)
 		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=1)
 
-		self.settings.New('x_abs', dtype=float, initial=0, unit='um')
-		self.settings.New('y_abs', dtype=float, initial=0, unit='um')
+		self.settings.New('x_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
+		self.settings.New('y_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
 		
 		self.settings.New('x_rel', dtype=float, initial=0, unit='um')
 		self.settings.New('y_rel', dtype=float, initial=0, unit='um')
