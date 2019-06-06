@@ -128,6 +128,7 @@ class PiezoStageMeasure(Measurement):
 
 		self.pi_device = self.pi_device_hw.pi_device
 		self.spec = self.spec_hw.spec
+		self.axes = self.pi_device_hw.axes
 
 		if (self.ui.start_scan_pushButton.clicked):
 
