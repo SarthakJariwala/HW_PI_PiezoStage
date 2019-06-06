@@ -115,7 +115,7 @@ class PiezoStageMeasure(Measurement):
 		This function runs repeatedly and automatically during the measurement run.
 		its update frequency is defined by self.display_update_period
 		"""
-		if hasattr(self, 'spec') and hasattr(self, 'pi_device'):
+		if hasattr(self, 'spec') and hasattr(self, 'pi_device') and hasattr(self, 'y'):
 			self.plot.plot(self.spec.wavelengths(), self.y, pen='r', clear=True)
 			pg.QtGui.QApplication.processEvents()
 
@@ -130,7 +130,7 @@ class PiezoStageMeasure(Measurement):
 		self.spec = self.spec_hw.spec
 		self.axes = self.pi_device_hw.axes
 		while not self.interrupt_measurement_called:
-			if (self.ui.start_scan_pushButton.clicked):
+			if (self.ui.scan_checkBox.checked):
 
 				x_start = self.settings['x_start']
 				y_start = self.settings['y_start']
@@ -154,14 +154,15 @@ class PiezoStageMeasure(Measurement):
 				k = 0 
 				for i in range(y_range):
 					for j in range(x_range):
+						if not self.ui.scan_checkBox.checked:
+							break
 						self._read_spectrometer()
-						data_array[k,:] = self.spec_measure.y
+						data_array[k,:] = self.y
 						self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 						self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
 						self.ui.progressBar.setValue(100*((k+1)/(x_range*y_range)))
 						k+=1
-						if self.ui.interrupt_scan_pushButton.clicked:
-							break
+
 					# TODO
 					# if statement needs to be modified to keep the stage at the finish y-pos for line scans in x, and same for y
 					if i == y_range-1: # this if statement is there to keep the stage at the finish position (in x) and not bring it back like we were doing during the scan 
@@ -172,19 +173,19 @@ class PiezoStageMeasure(Measurement):
 						self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
 						self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
 
-					if self.ui.interrupt_scan_pushButton.clicked:
+					if not self.ui.scan_checkBox.checked:
 						break
 
-			save_dict = {"Wavelengths": self.spec.wavelengths(), "Intensities": data_array,
+				save_dict = {"Wavelengths": self.spec.wavelengths(), "Intensities": data_array,
 						 "Scan Parameters":{"X scan start (um)": x_start, "Y scan start (um)": y_start,
 											"X scan size (um)": x_scan_size, "Y scan size (um)": y_scan_size,
 											"X step size (um)": x_step, "Y step size (um)": y_step},
 											"OceanOptics Parameters":{"Integration Time (ms)": self.spec_hw.settings['intg_time'],
-																	  "Scans Averages": self.spec_measure.settings['scan_to_avg'],
+																	  "Scans Averages": self.spec_measure.settings['scans_to_avg'],
 																	  "Correct Dark Counts": self.spec_hw.settings['correct_dark_counts']}
 						 }
 			
-			pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
+				pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
 
 	def center_piezo(self):
 		if hasattr(self, 'pi_device'):
