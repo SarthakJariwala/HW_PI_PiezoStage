@@ -75,7 +75,7 @@ class PiezoStageMeasure(Measurement):
 		self.ui.center_stage_pushButton.clicked.connect(self.center_piezo)
 		self.ui.abs_mov_pushButton.clicked.connect(self.abs_mov)
 		self.ui.rel_mov_pushButton.clicked.connect(self.rel_mov)
-		self.ui.save_single_pushButton.clicked.connect(self.spec_measure.save_single_spec)
+		self.ui.save_single_pushButton.clicked.connect(self.save_single_spec)
 
 		self.pi_device_hw.settings.x_pos.connect_to_widget(self.ui.x_pos_doubleSpinBox)
 		self.pi_device_hw.settings.y_pos.connect_to_widget(self.ui.y_pos_doubleSpinBox)
@@ -154,8 +154,8 @@ class PiezoStageMeasure(Measurement):
 			k = 0 
 			for i in range(y_range):
 				for j in range(x_range):
-					self.spec_measure._read_spectrometer()
-					data_array[k,:] = self.y
+					self._read_spectrometer()
+					data_array[k,:] = self.spec_measure.y
 					self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 					self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
 					self.ui.progressBar.setValue(100*((k+1)/(x_range*y_range)))
@@ -201,3 +201,24 @@ class PiezoStageMeasure(Measurement):
 			x_rel_pos = self.settings['x_rel']
 			y_rel_pos = self.settings['y_rel']
 			self.pi_device.MVR(axes=self.axes, values=[x_rel_pos,y_rel_pos])
+
+	def save_single_spec(self):
+		save_array = np.zeros(shape=(2048,2))
+		save_array[:,1] = self.y
+		save_array[:,0] = self.spec.wavelengths()
+
+		np.savetxt(self.app.settings['save_dir']+"/"+self.app.settings['sample']+".txt", save_array, fmt = '%.5f', 
+				   header = 'Wavelength (nm), Intensity (counts)', delimiter = ' ')
+
+	def _read_spectrometer(self):
+		if hasattr(self, 'spec'):
+			intg_time_ms = self.spec_hw.settings['intg_time']
+			self.spec.integration_time_micros(intg_time_ms*1e3)
+			
+			scans_to_avg = self.spec_measure.settings['scans_to_avg']
+			Int_array = np.zeros(shape=(2048,scans_to_avg))
+			
+			for i in range(scans_to_avg): #software average
+				data = self.spec.spectrum(correct_dark_counts=self.spec_hw.settings['correct_dark_counts'])#ui.correct_dark_counts_checkBox.isChecked())
+				Int_array[:,i] = data[1]
+				self.y = np.mean(Int_array, axis=-1)
