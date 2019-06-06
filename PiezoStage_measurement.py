@@ -43,11 +43,7 @@ class PiezoStageMeasure(Measurement):
 		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=1)
 		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=1)
 
-		self.settings.New('x_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
-		self.settings.New('y_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
-		
-		self.settings.New('x_rel', dtype=float, initial=0, unit='um')
-		self.settings.New('y_rel', dtype=float, initial=0, unit='um')
+
 		
 		# Create empty numpy array to serve as a buffer for the acquired data
 		self.buffer = np.zeros(120, dtype=float)
@@ -70,11 +66,8 @@ class PiezoStageMeasure(Measurement):
 		"""
 		
 		# connect ui widgets to measurement/hardware settings or functions
-		self.ui.initialize_pushButton.clicked.connect(self.start)
-		#self.ui.interrupt_scan_pushButton.clicked.connect(self.interrupt) #see lines 162 and 174
-		self.ui.center_stage_pushButton.clicked.connect(self.center_piezo)
-		self.ui.abs_mov_pushButton.clicked.connect(self.abs_mov)
-		self.ui.rel_mov_pushButton.clicked.connect(self.rel_mov)
+		self.ui.start_scan_pushButton.clicked.connect(self.start)
+		self.ui.interrupt_scan_pushButton.clicked.connect(self.interrupt) #see lines 162 and 174
 		self.ui.save_single_pushButton.clicked.connect(self.save_single_spec)
 
 		self.pi_device_hw.settings.x_pos.connect_to_widget(self.ui.x_pos_doubleSpinBox)
@@ -87,11 +80,6 @@ class PiezoStageMeasure(Measurement):
 		self.settings.x_step.connect_to_widget(self.ui.x_step_doubleSpinBox)
 		self.settings.y_step.connect_to_widget(self.ui.y_step_doubleSpinBox)
 		
-		self.settings.x_abs.connect_to_widget(self.ui.x_abs_doubleSpinBox)
-		self.settings.y_abs.connect_to_widget(self.ui.y_abs_doubleSpinBox)
-		self.settings.x_rel.connect_to_widget(self.ui.x_rel_doubleSpinBox)
-		self.settings.y_rel.connect_to_widget(self.ui.y_rel_doubleSpinBox)
-
 		self.spec_hw.settings.intg_time.connect_to_widget(self.ui.intg_time_doubleSpinBox)
 		self.spec_hw.settings.correct_dark_counts.connect_to_widget(self.ui.correct_dark_counts_checkBox)
 		self.spec_measure.settings.scans_to_avg.connect_to_widget(self.ui.scans_to_avg_spinBox)
@@ -184,22 +172,6 @@ class PiezoStageMeasure(Measurement):
 				 }
 	
 		pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
-
-	def center_piezo(self):
-		if hasattr(self, 'pi_device'):
-			self.pi_device.MOV(axes=self.axes, values=[50,50])
-
-	def abs_mov(self):
-		if hasattr(self, 'pi_device'):
-			x_abs_pos = self.settings['x_abs']
-			y_abs_pos = self.settings['y_abs']
-			self.pi_device.MOV(axes=self.axes, values=[x_abs_pos,y_abs_pos])
-		
-	def rel_mov(self):
-		if hasattr(self, 'pi_device'):
-			x_rel_pos = self.settings['x_rel']
-			y_rel_pos = self.settings['y_rel']
-			self.pi_device.MVR(axes=self.axes, values=[x_rel_pos,y_rel_pos])
 
 	def save_single_spec(self):
 		save_array = np.zeros(shape=(2048,2))

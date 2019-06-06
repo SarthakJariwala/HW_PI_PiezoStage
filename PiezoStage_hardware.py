@@ -20,6 +20,16 @@ class PiezoStageHW(HardwareComponent):
         self.settings.New('x_pos', dtype=float, unit='um')
         self.settings.New('y_pos', dtype=float, unit='um')
 
+        self.settings.New('x_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
+        self.settings.New('y_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
+        
+        self.settings.New('x_rel', dtype=float, initial=0, unit='um')
+        self.settings.New('y_rel', dtype=float, initial=0, unit='um')
+
+        self.add_operation('center_stage', self.center_piezo)
+        self.add_operation('absolute_movement', self.abs_mov)
+        self.add_operation('relative_movement', self.rel_mov)
+
     def connect(self):
         # Open connection to the device:
         self.pi_device = GCSDevice("E-710")	# Creates a Controller instant
@@ -38,10 +48,19 @@ class PiezoStageHW(HardwareComponent):
 
         self.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
         self.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
-        #Connect settings to hardware:
-        #self.settings.x_pos.connect_to_hardware(self.x_axis)
-        #self.settings.y_pos.connect_to_hardware(self.y_axis)
 
+        
+        #Connect settings to hardware:
+        LQ = self.settings.as_dict()
+
+        LQ["x_pos"].hardware_read_func = self.getX
+        LQ["y_pos"].hardware_read_func = self.getY
+
+        LQ["x_pos"].hardware_set_func = self.abs_mov
+        LQ["y_pos"].hardware_set_func = self.abs_mov
+        
+        LQ["x_pos"].hardware_set_func = self.rel_mov
+        LQ["y_pos"].hardware_set_func = self.rel_mov
     
         #Take an initial sample of the data.
         self.read_from_hardware()
@@ -53,3 +72,25 @@ class PiezoStageHW(HardwareComponent):
             self.pi_device.close()
             del self.pi_device
             self.pi_device = None
+
+    def center_piezo(self):
+        if hasattr(self, 'pi_device'):
+            self.pi_device.MOV(axes=self.axes, values=[50,50])
+
+    def abs_mov(self):
+        if hasattr(self, 'pi_device'):
+            x_abs_pos = self.settings['x_abs']
+            y_abs_pos = self.settings['y_abs']
+            self.pi_device.MOV(axes=self.axes, values=[x_abs_pos,y_abs_pos])
+        
+    def rel_mov(self):
+        if hasattr(self, 'pi_device'):
+            x_rel_pos = self.settings['x_rel']
+            y_rel_pos = self.settings['y_rel']
+            self.pi_device.MVR(axes=self.axes, values=[x_rel_pos,y_rel_pos])
+
+    def getX(self):
+        return self.pi_device.qPOS(axes=self.axes)['1']
+
+    def getY(self):
+        return self.pi_device.qPOS(axes=self.axes)['2']
