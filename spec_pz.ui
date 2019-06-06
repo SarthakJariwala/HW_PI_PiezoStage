@@ -536,7 +536,7 @@
        </spacer>
       </item>
       <item row="1" column="0">
-       <widget class="QCheckBox" name="checkBox">
+       <widget class="QCheckBox" name="scan_checkBox">
         <property name="text">
          <string>Scan</string>
         </property>
