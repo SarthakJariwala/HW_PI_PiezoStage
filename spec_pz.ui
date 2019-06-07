@@ -43,8 +43,26 @@
          </property>
          <layout class="QGridLayout" name="gridLayout_7">
           <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_2">
-            <item row="1" column="0" alignment="Qt::AlignRight">
+           <layout class="QGridLayout" name="gridLayout_5">
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="x_pos_doubleSpinBox">
+              <property name="font">
+               <font>
+                <pointsize>8</pointsize>
+               </font>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="y_pos_doubleSpinBox">
+              <property name="font">
+               <font>
+                <pointsize>8</pointsize>
+               </font>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0" alignment="Qt::AlignRight">
              <widget class="QLabel" name="label">
               <property name="font">
                <font>
@@ -56,25 +74,7 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="x_pos_doubleSpinBox">
-              <property name="font">
-               <font>
-                <pointsize>8</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="y_pos_doubleSpinBox">
-              <property name="font">
-               <font>
-                <pointsize>8</pointsize>
-               </font>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0" alignment="Qt::AlignRight">
+            <item row="1" column="0" alignment="Qt::AlignRight">
              <widget class="QLabel" name="label_2">
               <property name="font">
                <font>
@@ -363,8 +363,6 @@
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <tabstops>
-  <tabstop>x_pos_doubleSpinBox</tabstop>
-  <tabstop>y_pos_doubleSpinBox</tabstop>
   <tabstop>intg_time_doubleSpinBox</tabstop>
   <tabstop>scans_to_avg_spinBox</tabstop>
   <tabstop>correct_dark_counts_checkBox</tabstop>
