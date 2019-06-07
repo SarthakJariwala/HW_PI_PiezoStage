@@ -17,8 +17,8 @@ class PiezoStageHW(HardwareComponent):
         # Define your hardware settings here.
         # These settings will be displayed in the GUI and auto-saved with data files
         self.name = 'piezostage'
-        self.settings.New('x_pos', dtype=float, unit='um')
-        self.settings.New('y_pos', dtype=float, unit='um')
+        self.settings.New('x_position', dtype=float, unit='um')
+        self.settings.New('y_position', dtype=float, unit='um')
 
         self.settings.New('x_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
         self.settings.New('y_abs', dtype=float, initial=0, unit='um', vmin=0, vmax=100)
@@ -49,14 +49,14 @@ class PiezoStageHW(HardwareComponent):
         #Connect settings to hardware:
         LQ = self.settings.as_dict()
 
-        LQ["x_pos"].hardware_read_func = self.getX
-        LQ["y_pos"].hardware_read_func = self.getY
+        LQ["x_position"].hardware_read_func = self.getX
+        LQ["y_position"].hardware_read_func = self.getY
 
-        LQ["x_pos"].hardware_set_func = self.abs_mov
-        LQ["y_pos"].hardware_set_func = self.abs_mov
+        LQ["x_position"].hardware_set_func = self.abs_mov
+        LQ["y_position"].hardware_set_func = self.abs_mov
         
-        LQ["x_pos"].hardware_set_func = self.rel_mov
-        LQ["y_pos"].hardware_set_func = self.rel_mov
+        LQ["x_position"].hardware_set_func = self.rel_mov
+        LQ["y_position"].hardware_set_func = self.rel_mov
 		
         #Take an initial sample of the data.
         self.read_from_hardware()
@@ -79,6 +79,11 @@ class PiezoStageHW(HardwareComponent):
             x_abs_pos = self.settings['x_abs']
             y_abs_pos = self.settings['y_abs']
             self.pi_device.MOV(axes=self.axes, values=[x_abs_pos,y_abs_pos])
+            self.read_from_hardware()
+
+    def abs_mov(self, x, y):
+        if hasattr(self, 'pi_device'):
+            self.pi_device.MOV(axes=self.axes, values=[x,y])
             self.read_from_hardware()
         
     def rel_mov(self):

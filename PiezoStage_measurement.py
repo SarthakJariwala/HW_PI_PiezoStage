@@ -12,7 +12,7 @@ class PiezoStageMeasure(Measurement):
 	
 	# this is the name of the measurement that ScopeFoundry uses 
 	# when displaying your measurement and saving data related to it    
-	name = "piezostage_measurement"
+	name = "oceanoptics_scan"
 	
 	def setup(self):
 		"""
@@ -69,8 +69,8 @@ class PiezoStageMeasure(Measurement):
 		self.ui.start_scan_pushButton.clicked.connect(self.start)
 		self.ui.interrupt_scan_pushButton.clicked.connect(self.interrupt)
 
-		self.pi_device_hw.settings.x_pos.connect_to_widget(self.ui.x_pos_doubleSpinBox)
-		self.pi_device_hw.settings.y_pos.connect_to_widget(self.ui.y_pos_doubleSpinBox)
+		self.pi_device_hw.settings.x_position.connect_to_widget(self.ui.x_pos_doubleSpinBox)
+		self.pi_device_hw.settings.y_position.connect_to_widget(self.ui.y_pos_doubleSpinBox)
 		self.settings.x_start.connect_to_widget(self.ui.x_start_doubleSpinBox)
 		self.settings.y_start.connect_to_widget(self.ui.y_start_doubleSpinBox)
 		
@@ -144,7 +144,6 @@ class PiezoStageMeasure(Measurement):
 				self._read_spectrometer()
 				data_array[k,:] = self.y
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
-				#self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
 				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
 				print(100*((k+1)/(x_range*y_range)))
 				self.pi_device_hw.read_from_hardware()
@@ -154,12 +153,9 @@ class PiezoStageMeasure(Measurement):
 			# if statement needs to be modified to keep the stage at the finish y-pos for line scans in x, and same for y
 			if i == y_range-1: # this if statement is there to keep the stage at the finish position (in x) and not bring it back like we were doing during the scan 
 				self.pi_device.MVR(axes=self.axes[1], values=[y_step])
-				#self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
 				self.pi_device_hw.read_from_hardware()
 			else:
 				self.pi_device.MVR(axes=self.axes, values=[-x_scan_size, y_step])
-				#self.pi_device_hw.settings['x_pos'] = self.pi_device.qPOS(axes=self.axes)['1']
-				#self.pi_device_hw.settings['y_pos'] = self.pi_device.qPOS(axes=self.axes)['2']
 				self.pi_device_hw.read_from_hardware()
 
 			if self.interrupt_measurement_called:
