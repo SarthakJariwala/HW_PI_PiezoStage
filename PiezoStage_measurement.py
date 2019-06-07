@@ -67,8 +67,7 @@ class PiezoStageMeasure(Measurement):
 		
 		# connect ui widgets to measurement/hardware settings or functions
 		self.ui.start_scan_pushButton.clicked.connect(self.start)
-		self.ui.interrupt_scan_pushButton.clicked.connect(self.interrupt) #see lines 162 and 174
-		self.ui.save_single_pushButton.clicked.connect(self.save_single_spec)
+		self.ui.interrupt_scan_pushButton.clicked.connect(self.interrupt)
 
 		self.pi_device_hw.settings.x_pos.connect_to_widget(self.ui.x_pos_doubleSpinBox)
 		self.pi_device_hw.settings.y_pos.connect_to_widget(self.ui.y_pos_doubleSpinBox)
@@ -176,14 +175,6 @@ class PiezoStageMeasure(Measurement):
 				 }
 	
 		pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
-	
-	def save_single_spec(self):
-		save_array = np.zeros(shape=(2048,2))
-		save_array[:,1] = self.y
-		save_array[:,0] = self.spec.wavelengths()
-
-		np.savetxt(self.app.settings['save_dir']+"/"+self.app.settings['sample']+".txt", save_array, fmt = '%.5f', 
-				   header = 'Wavelength (nm), Intensity (counts)', delimiter = ' ')
 
 	def _read_spectrometer(self):
 		if hasattr(self, 'spec'):
