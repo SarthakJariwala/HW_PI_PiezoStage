@@ -34,29 +34,22 @@ class PiezoStageHW(HardwareComponent):
         # Open connection to the device:
         self.pi_device = GCSDevice("E-710")	# Creates a Controller instant
         self.pi_device.ConnectNIgpib(board=0,device=4) # Connect to GPIB board
-        #self.ui.status_textBrowser.append('Connected: {}'.format(self.pi_device.qIDN().strip()))
-#        print('connected: {}'.format(self.pi_device.qIDN().strip()))
-        
+
         self.axes = self.pi_device.axes[0:2] # selecting x and y axis of the stage
-        
         self.pi_device.INI()
         self.pi_device.REF(axes=self.axes)
-        
         self.pi_device.SVO(axes=self.axes, values=[True,True])	# Turn on servo control for both axes
-        #self.ui.status_textBrowser.append("Current Stage Position:\n{}".format(self.pi_device.qPOS(axes=self.axes)))
-#        print(self.pi_device.qPOS(axes=self.axes))
         
         #Connect settings to hardware:
         LQ = self.settings.as_dict()
-
         LQ["x_position"].hardware_read_func = self.getX
         LQ["y_position"].hardware_read_func = self.getY
 
-        # LQ["x_position"].hardware_set_func = self.abs_mov
-        # LQ["y_position"].hardware_set_func = self.abs_mov
+        LQ["x_position"].hardware_set_func = self.abs_mov
+        LQ["y_position"].hardware_set_func = self.abs_mov
         
-        # LQ["x_position"].hardware_set_func = self.rel_mov
-        # LQ["y_position"].hardware_set_func = self.rel_mov
+        LQ["x_position"].hardware_set_func = self.rel_mov
+        LQ["y_position"].hardware_set_func = self.rel_mov
 		
         #Take an initial sample of the data.
         self.read_from_hardware()
@@ -79,11 +72,6 @@ class PiezoStageHW(HardwareComponent):
             x_abs_pos = self.settings['x_abs']
             y_abs_pos = self.settings['y_abs']
             self.pi_device.MOV(axes=self.axes, values=[x_abs_pos,y_abs_pos])
-            self.read_from_hardware()
-
-    def abs_mov(self, x, y):
-        if hasattr(self, 'pi_device'):
-            self.pi_device.MOV(axes=self.axes, values=[x,y])
             self.read_from_hardware()
         
     def rel_mov(self):

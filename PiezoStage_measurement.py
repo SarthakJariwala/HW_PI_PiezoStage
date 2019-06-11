@@ -10,16 +10,13 @@ import pickle
 
 class PiezoStageMeasure(Measurement):
 	
-	# this is the name of the measurement that ScopeFoundry uses 
-	# when displaying your measurement and saving data related to it    
-	name = "oceanoptics_scan"
-	
 	def setup(self):
 		"""
 		Runs once during App initialization.
 		This is the place to load a user interface file,
 		define settings, and set up data structures. 
 		"""
+		self.name = "oceanoptics_scan"
 		
 		# Define ui file to be used as a graphical interface
 		# This file can be edited graphically with Qt Creator
@@ -42,11 +39,6 @@ class PiezoStageMeasure(Measurement):
 
 		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=1)
 		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=1)
-
-
-		
-		# Create empty numpy array to serve as a buffer for the acquired data
-		self.buffer = np.zeros(120, dtype=float)
 		
 		# Define how often to update display during a run
 		self.display_update_period = 0.1 
@@ -98,7 +90,7 @@ class PiezoStageMeasure(Measurement):
 
 	def update_display(self):
 		"""
-		Displays (plots) the numpy array self.buffer. 
+		Displays (plots) the wavelengths on x and intensities on y as the stage moves.
 		This function runs repeatedly and automatically during the measurement run.
 		its update frequency is defined by self.display_update_period
 		"""
@@ -111,8 +103,12 @@ class PiezoStageMeasure(Measurement):
 		Runs when measurement is started. Runs in a separate thread from GUI.
 		It should not update the graphical interface directly, and should only
 		focus on data acquisition.
-		"""
 
+		Runs until scan is complete or measurement is interrupted.
+		"""
+		self.check_filename()
+		
+		#Directly access pi device and spectrometer.
 		self.pi_device = self.pi_device_hw.pi_device
 		self.spec = self.spec_hw.spec
 		self.axes = self.pi_device_hw.axes
@@ -126,6 +122,7 @@ class PiezoStageMeasure(Measurement):
 		x_step = self.settings['x_step']
 		y_step = self.settings['y_step']
 			
+		#number of scans in x and y
 		y_range = int(np.ceil(y_scan_size/y_step))
 		x_range = int(np.ceil(x_scan_size/x_step))
 		
@@ -136,14 +133,14 @@ class PiezoStageMeasure(Measurement):
 		self.pi_device.MOV(axes=self.axes, values=[x_start,y_start])
 		
 
-		k = 0
+		k = 0 #track scan/'pixel' number
 		for i in range(y_range):
 			for j in range(x_range):
 				if self.interrupt_measurement_called:
 					break
 				self._read_spectrometer()
-				data_array[k,:] = self.y
-				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
+				data_array[k,:] = self.y #get new intensity data
+				self.pi_device.MVR(axes=self.axes[0], values=[x_step]) #continue scan...
 				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
 				print(100*((k+1)/(x_range*y_range)))
 				self.pi_device_hw.read_from_hardware()
@@ -173,14 +170,28 @@ class PiezoStageMeasure(Measurement):
 		pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
 
 	def _read_spectrometer(self):
+		'''
+		Read spectrometer according to settings and update self.y (intensities array)
+		'''
 		if hasattr(self, 'spec'):
 			intg_time_ms = self.spec_hw.settings['intg_time']
-			self.spec.integration_time_micros(intg_time_ms*1e3)
+			self.spec.integration_time_micros(intg_time_ms*1e3) #seabreeze error checking
 			
 			scans_to_avg = self.spec_measure.settings['scans_to_avg']
 			Int_array = np.zeros(shape=(2048,scans_to_avg))
 			
 			for i in range(scans_to_avg): #software average
-				data = self.spec.spectrum(correct_dark_counts=self.spec_hw.settings['correct_dark_counts'])#ui.correct_dark_counts_checkBox.isChecked())
+				data = self.spec.spectrum(correct_dark_counts=self.spec_hw.settings['correct_dark_counts'])#acquire wavelength and intensity data from spec
 				Int_array[:,i] = data[1]
 				self.y = np.mean(Int_array, axis=-1)
+
+	def check_filename(self):
+		'''
+		If no sample name given or duplicate sample name given, fix the problem by appending a number.
+		'''
+		filename = self.app.settings['sample']+"_raw_PL_spectra_data.pkl"
+		directory = self.app.settings['save_dir']
+		number = 1
+		while (os.path.exists(directory+"/"+filename) or self.app.settings['sample'] is ""):
+			filename = self.app.settings['sample'] = filename + str(number)
+			number += 1
