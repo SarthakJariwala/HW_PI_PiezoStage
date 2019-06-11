@@ -276,7 +276,7 @@ class PiezoStageMeasure(Measurement):
 				Int_array[:,i] = data[1]
 				self.y = np.mean(Int_array, axis=-1)
 
-	def collect_pixel(self, pixel_num, k, j, i):
+	def collect_pixel(self, pixel_num, k, j):
 		
 		# collect data
 		#print('OceanOptics_PI_2DSlowScan', 'collect_pixel', pixel_num, k, j, i)
@@ -301,8 +301,8 @@ class PiezoStageMeasure(Measurement):
 
 		# hist_data = ph.histogram_data
 		self._read_spectrometer()
-		self.save_array[:,1] = self.y
-		self.save_array[:,0] = self.spec.wavelengths()
+		current_spec_array = self.get_single_spec
+		current_intensities = current_spec_array[:,1] 
 
 		t1 = time.time()
 		elapsed_time = t1-t0
@@ -311,12 +311,21 @@ class PiezoStageMeasure(Measurement):
 		#self.time_trace_map[k,j,i, :] = hist_data[0:self.num_hist_chans]
 		#self.time_trace_map_h5[k,j,i, :] = hist_data[0:self.num_hist_chans]
 		
-		self.elapsed_time[k,j,i] = elapsed_time
+		self.elapsed_time[k,j] = elapsed_time
 
 		# display count-rate
-		self.display_image_map[k,j] = self.save_array[:,1].sum() * 1.0/elapsed_time
+		self.display_image_map[k,j] = current_intensities.sum() * 1.0/elapsed_time
 		
 		import datetime
 		print('pixel',  datetime.timedelta(seconds=(self.Npixels - pixel_num)*elapsed_time*1e-3), 'left')
 		
 		print( 'pixel done' )
+
+	def get_single_spec(self):
+		save_array = np.zeros(shape=(2048,2))
+		save_array[:,1] = self.y
+		save_array[:,0] = self.spec.wavelengths()
+
+		return save_array
+		#np.savetxt(self.app.settings['save_dir']+"/"+self.app.settings['sample']+".txt", save_array, fmt = '%.5f', 
+		#		   header = 'Wavelength (nm), Intensity (counts)', delimiter = ' ')
