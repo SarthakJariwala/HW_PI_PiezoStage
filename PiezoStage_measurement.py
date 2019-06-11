@@ -44,7 +44,6 @@ class PiezoStageMeasure(Measurement):
 		self.display_update_period = 0.1 
 		
 		# Convenient reference to the hardware used in the measurement
-		#self.func_gen = self.app.hardware['virtual_function_gen']
 		self.spec_hw = self.app.hardware['oceanoptics']
 		self.pi_device_hw = self.app.hardware['piezostage']
 		

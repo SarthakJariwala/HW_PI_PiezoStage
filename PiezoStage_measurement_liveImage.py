@@ -8,6 +8,7 @@ import numpy as np
 import time
 import pickle
 import os.path
+from qtpy import QtCore
 
 class PiezoStageMeasureLive(Measurement):
 
@@ -70,8 +71,7 @@ class PiezoStageMeasureLive(Measurement):
 		self.pi_device_hw.settings.x_position.connect_to_widget(self.ui.x_pos_doubleSpinBox)
 		self.pi_device_hw.settings.y_position.connect_to_widget(self.ui.y_pos_doubleSpinBox)
 		self.settings.x_start.connect_to_widget(self.ui.x_start_doubleSpinBox)
-		self.settings.y_start.connect_to_widget(self.ui.y_start_doubleSpinBox)
-		
+		self.settings.y_start.connect_to_widget(self.ui.y_start_doubleSpinBox)	
 		self.settings.x_size.connect_to_widget(self.ui.x_size_doubleSpinBox)
 		self.settings.y_size.connect_to_widget(self.ui.y_size_doubleSpinBox)
 		self.settings.x_step.connect_to_widget(self.ui.x_step_doubleSpinBox)
@@ -80,7 +80,6 @@ class PiezoStageMeasureLive(Measurement):
 		self.spec_hw.settings.intg_time.connect_to_widget(self.ui.intg_time_doubleSpinBox)
 		self.spec_hw.settings.correct_dark_counts.connect_to_widget(self.ui.correct_dark_counts_checkBox)
 		self.spec_measure.settings.scans_to_avg.connect_to_widget(self.ui.scans_to_avg_spinBox)
-
 
 		# Set up pyqtgraph graph_layout in the UI
 		self.graph_layout=pg.GraphicsLayoutWidget()
@@ -110,6 +109,11 @@ class PiezoStageMeasureLive(Measurement):
 		self.scan_roi.sigRegionChangeFinished.connect(self.mouse_update_scan_roi)
 		self.stage_plot.addItem(self.scan_roi)
 
+		self.ui.x_start_doubleSpinBox.valueChanged.connect(self.update_roi_start)
+		self.ui.y_start_doubleSpinBox.valueChanged.connect(self.update_roi_start)
+		self.ui.x_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
+		self.ui.y_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
+
 		#image display container
 		self.img_items = []				
 		self.img_item = pg.ImageItem()
@@ -136,9 +140,13 @@ class PiezoStageMeasureLive(Measurement):
 		self.stage_plot.addItem(self.img_item)
 		self.hist_lut.setImageItem(self.img_item)
 
-		#self.img_item.setImage(self.display_image_map[0,:])
-		self.img_item_rect = QtCore.QRectF(self.settings.x_start, self.settings.y_start,
-			self.settings.x_size, self.settings.y_size)
+		blank = np.zeros((3,3))
+		self.img_item.setImage(image=blank)
+		x_start = int(self.settings['x_start'])
+		y_start = int(self.settings['y_start'])
+		x_size = int(self.settings['x_size'])
+		y_size = int(self.settings['y_size'])
+		self.img_item_rect = QtCore.QRectF(x_start, y_start, x_size, y_size)
 		self.img_item.setRect(self.img_item_rect)
 
 
@@ -161,6 +169,18 @@ class PiezoStageMeasureLive(Measurement):
 		#self.compute_scan_params()
 		#self.update_scan_roi()
 
+	def update_roi_start(self):
+		'''
+		Update region of interest start position according to spinboxes
+		'''
+		self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start']))
+
+	def update_roi_size(self):
+		'''
+		Update region of interest size according to spinboxes
+		'''
+		self.scan_roi.setSize((self.settings['x_size'], self.settings['y_size']))
+
 	def update_arrow_pos(self):
 		'''
 		Update arrow position on image to stage position
@@ -168,6 +188,7 @@ class PiezoStageMeasureLive(Measurement):
 		x = self.pi_device_hw.settings['x_position']
 		y = self.pi_device_hw.settings['y_position']
 		self.current_stage_pos_arrow.setPos(x,y)
+
 
 	def update_display(self):
 		"""
