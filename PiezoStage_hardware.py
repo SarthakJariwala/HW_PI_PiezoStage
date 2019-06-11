@@ -47,10 +47,10 @@ class PiezoStageHW(HardwareComponent):
 #        print(self.pi_device.qPOS(axes=self.axes))
         
         #Connect settings to hardware:
-        # LQ = self.settings.as_dict()
+        LQ = self.settings.as_dict()
 
-        # LQ["x_position"].hardware_read_func = self.getX
-        # LQ["y_position"].hardware_read_func = self.getY
+        LQ["x_position"].hardware_read_func = self.getX
+        LQ["y_position"].hardware_read_func = self.getY
 
         # LQ["x_position"].hardware_set_func = self.abs_mov
         # LQ["y_position"].hardware_set_func = self.abs_mov
