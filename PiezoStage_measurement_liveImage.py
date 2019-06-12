@@ -320,5 +320,5 @@ class PiezoStageMeasureLive(Measurement):
 		directory = self.app.settings['save_dir']
 		if samplename == "":
 			self.app.setting['sample'] = int(time.time())
-		if (os.path.exists(directory+"/"+filename):
+		if (os.path.exists(directory+"/"+filename)):
 			self.app.settings['sample'] = samplename + str(int(time.time()))
