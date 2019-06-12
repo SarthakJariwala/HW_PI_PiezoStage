@@ -7,6 +7,7 @@ import pyqtgraph as pg
 import numpy as np
 import time
 import pickle
+import os.path
 
 class PiezoStageMeasure(Measurement):
 	
@@ -130,6 +131,7 @@ class PiezoStageMeasure(Measurement):
 		
 		# Move to the starting position
 		self.pi_device.MOV(axes=self.axes, values=[x_start,y_start])
+		self.pi_device_hw.read_from_hardware()
 		
 
 		k = 0 #track scan/'pixel' number
@@ -186,11 +188,12 @@ class PiezoStageMeasure(Measurement):
 
 	def check_filename(self):
 		'''
-		If no sample name given or duplicate sample name given, fix the problem by appending a number.
+		If no sample name given or duplicate sample name given, fix the problem by appending a unique number.
 		'''
-		filename = self.app.settings['sample']+"_raw_PL_spectra_data.pkl"
+		samplename = self.app.settings['sample']
+		filename = samplename + "_raw_PL_spectra_data.pkl"
 		directory = self.app.settings['save_dir']
-		number = 1
-		while (os.path.exists(directory+"/"+filename) or self.app.settings['sample'] is ""):
-			filename = self.app.settings['sample'] = filename + str(number)
-			number += 1
+		if samplename == "":
+			self.app.setting['sample'] = int(time.time())
+		if (os.path.exists(directory+"/"+filename):
+			self.app.settings['sample'] = samplename + str(int(time.time()))
