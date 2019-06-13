@@ -1,14 +1,10 @@
 from ScopeFoundry import Measurement
 from ScopeFoundry.helper_funcs import sibling_path, load_qt_ui_file
-from ScopeFoundry import h5_io
-from OceanOptics_hardware import OceanOpticsHW
-from OceanOptics_measurement import OceanOpticsMeasure
 import pyqtgraph as pg
 import numpy as np
 import time
 import pickle
 import os.path
-from qtpy import QtCore
 
 class PiezoStageMeasureLive(Measurement):
 
@@ -37,16 +33,11 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.New('x_start', dtype=float, unit='um', vmin=0)
 		self.settings.New('y_start', dtype=float, unit='um', vmin=0)
 	
-		self.settings.New('x_size', dtype=float, initial=1, unit='um', vmin=1)
-		self.settings.New('y_size', dtype=float, initial=1, unit='um', vmin=1)
+		self.settings.New('x_size', dtype=float, initial=1, unit='um', vmin=0)
+		self.settings.New('y_size', dtype=float, initial=1, unit='um', vmin=0)
 
-		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=1)
-		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=1)
-
-
-		
-		# Create empty numpy array to serve as a buffer for the acquired data
-		self.buffer = np.zeros(120, dtype=float)
+		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=.001)
+		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=.001)
 		
 		# Define how often to update display during a run
 		self.display_update_period = 0.1 
@@ -93,7 +84,6 @@ class PiezoStageMeasureLive(Measurement):
 		# # Create PlotDataItem object ( a scatter plot on the axes )
 		self.optimize_plot_line = self.plot.plot([0])
 
-
 		#stage ui base
 		self.stage_layout=pg.GraphicsLayoutWidget()
 		self.ui.stage_groupBox.layout().addWidget(self.stage_layout)
@@ -115,40 +105,10 @@ class PiezoStageMeasureLive(Measurement):
 		self.ui.y_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
 
 		#image display container
-		self.img_items = []				
-		self.img_item = pg.ImageItem()
-		self.img_items.append(self.img_item)
-		self.stage_plot.addItem(self.img_item)
-		self.stage_plot.showGrid(x=True, y=True)
-		self.stage_plot.setAspectLocked(lock=True, ratio=1)
-		
-		#arrow showing stage location
-		self.current_stage_pos_arrow = pg.ArrowItem()
-		self.current_stage_pos_arrow.setZValue(100)
-		self.stage_plot.addItem(self.current_stage_pos_arrow)
-		if hasattr(self, 'stage'):
-			self.pi_device_hw.settings.x_position.updated_value.connect(self.update_arrow_pos, QtCore.Qt.UniqueConnection)
-			self.pi_device_hw.settings.y_position.updated_value.connect(self.update_arrow_pos, QtCore.Qt.UniqueConnection)
-
-		#histogram
-		self.hist_lut = pg.HistogramLUTItem()
-		self.stage_layout.addItem(self.hist_lut)
-
-		#initial image item setup - this will display intensities as scan happens
-		self.img_item = pg.ImageItem()
-		self.img_items.append(self.img_item)
-		self.stage_plot.addItem(self.img_item)
-		self.hist_lut.setImageItem(self.img_item)
-
-		blank = np.zeros((3,3))
-		self.img_item.setImage(image=blank)
-		x_start = int(self.settings['x_start'])
-		y_start = int(self.settings['y_start'])
-		x_size = int(self.settings['x_size'])
-		y_size = int(self.settings['y_size'])
-		self.img_item_rect = QtCore.QRectF(x_start, y_start, x_size, y_size)
-		self.img_item.setRect(self.img_item_rect)
-
+		self.img_items = []
+		self.imv = pg.ImageView()
+		self.imv.getView().setAspectLocked(lock=False, ratio=1)
+		self.imv.getView().setMouseEnabled(x=True, y=True)
 
 	def mouse_update_scan_roi(self):
 		'''
@@ -158,16 +118,10 @@ class PiezoStageMeasureLive(Measurement):
 		w, h =  self.scan_roi.size()
 		print(w)
 		print(h)
-		#self.h_center.update_value(x0 + w/2)
-		#self.v_center.update_value(y0 + h/2)
-		#self.h_span.update_value(w-self.dh.val)
-		#self.v_span.update_value(h-self.dv.val)
 		self.settings['x_start'] = x0
 		self.settings['y_start'] = y0
 		self.settings['x_size'] = w
 		self.settings['y_size'] = h
-		#self.compute_scan_params()
-		#self.update_scan_roi()
 
 	def update_roi_start(self):
 		'''
@@ -201,16 +155,9 @@ class PiezoStageMeasureLive(Measurement):
 			self.plot.plot(self.spec.wavelengths(), self.y, pen='r', clear=True) #plot wavelength vs intensity
 			pg.QtGui.QApplication.processEvents()
 
-			#update image map // check this
-			#kk, jj = self.scan_index
-			#display_image_row = self.display_image_map[jj]
-			#x_array = display_image_row[:,0]
-			#y_array = display_image_row[:,1]
-			#intensities_array = display_image_row[:,2]
-			#disp_img = display_image_row.T
-			disp_img = self.display_image_map.T #transpose to use for setImage, which takes 3d array (x, y, intensity)
-			self.img_item.setImage(disp_img, autoRange=False, autoLevels=True) #update image
-			self.img_item.setRect(self.img_item_rect)
+			disp_img = self.display_image_map #transpose to use for setImage, which takes 3d array (x, y, intensity)
+			self.imv.setImage(img=disp_img, autoRange=False, autoLevels=True)
+			self.imv.show()
 
 	def run(self):
 		"""
@@ -221,7 +168,7 @@ class PiezoStageMeasureLive(Measurement):
 		Runs until scan is completed or interrupted.
 		"""
 		self.check_filename()
-
+		
 		self.pi_device = self.pi_device_hw.pi_device
 		self.spec = self.spec_hw.spec
 		self.axes = self.pi_device_hw.axes
@@ -234,19 +181,33 @@ class PiezoStageMeasureLive(Measurement):
 		
 		x_step = self.settings['x_step']
 		y_step = self.settings['y_step']
+		
+		if y_scan_size == 0:
+			y_scan_size = 1#self.settings['y_size'] = 1
+			y_step = 1#self.settings['y_step'] = 1
+        
+		if x_scan_size == 0:
+			x_scan_size = 1#self.settings['x_size'] = 1
+			x_step = 1#self.settings['x_step'] = 1
+        
+		if y_step == 0:
+			y_step = 1#self.settings['y_step'] = 1
+            
+		if x_step == 0:
+			x_step = 1#self.settings['x_step'] = 1
 			
 		#number of scans in x and y
-		y_range = int(np.ceil(y_scan_size/y_step))
-		x_range = int(np.ceil(x_scan_size/x_step))
+		self.y_range = int(np.ceil(y_scan_size/y_step))
+		self.x_range = int(np.ceil(x_scan_size/x_step))
 		
 		# Define empty array for saving intensities
-		data_array = np.zeros(shape=(x_range*y_range,2048))
+		data_array = np.zeros(shape=(self.x_range*self.y_range,2048))
 
 		# Define empty array for image map
 		#self.display_image_map = np.zeros((y_range, x_range), dtype=float)
 
 		#Each row represents a pixel. Each element in the row is as follows: x, y, intensities integration
-		self.display_image_map = np.zeros((x_range*y_range, 3), dtype=float)
+		self.display_image_map = np.zeros((2048, self.x_range, self.y_range), dtype=float)
 		
 		# Move to the starting position
 		self.pi_device.MOV(axes=self.axes, values=[x_start,y_start])
@@ -254,32 +215,29 @@ class PiezoStageMeasureLive(Measurement):
 		
 
 		k = 0 #keep track of scan/'pixel' number
-		#self.scan_index = (0, 0)
-		for i in range(y_range):
-			for j in range(x_range):
+		for i in range(self.y_range):
+			for j in range(self.x_range):
 				if self.interrupt_measurement_called:
 					break
 				self._read_spectrometer()
 				data_array[k,:] = self.y
-				intensities_sum = data_array[k,:].sum()
-				x = self.pi_device_hw.settings['x_position']
-				y = self.pi_device_hw.settings['y_position']
-				self.display_image_map[k] = (x, y, intensities_sum)
+				#intensities_sum = data_array[k,:].sum()
+				self.display_image_map[:, j, i] = self.y#intensities_sum
+				print(self.display_image_map.T)
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
-				print(100*((k+1)/(x_range*y_range)))
+				print(100*((k+1)/(self.x_range*self.y_range)))
 				self.pi_device_hw.read_from_hardware()
 				k+=1
-				#self.scan_index(i, j) #j, i?  
-
 			# TODO
 			# if statement needs to be modified to keep the stage at the finish y-pos for line scans in x, and same for y
-			if i == y_range-1: # this if statement is there to keep the stage at the finish position (in x) and not bring it back like we were doing during the scan 
+			if i == self.y_range-1: # this if statement is there to keep the stage at the finish position (in x) and not bring it back like we were doing during the scan 
 				self.pi_device.MVR(axes=self.axes[1], values=[y_step])
 				self.pi_device_hw.read_from_hardware()
-			else:
-				self.pi_device.MVR(axes=self.axes, values=[-x_scan_size, y_step])
-				self.pi_device_hw.read_from_hardware()
+			else:				
+				self.pi_device.MVR(axes=self.axes[1], values=[y_step])
+				self.pi_device.MOV(axes=self.axes[0], values=[x_start])
+				#self.pi_device_hw.read_from_hardware()
 
 			if self.interrupt_measurement_called:
 				break
@@ -319,6 +277,6 @@ class PiezoStageMeasureLive(Measurement):
 		filename = samplename + "_raw_PL_spectra_data.pkl"
 		directory = self.app.settings['save_dir']
 		if samplename == "":
-			self.app.setting['sample'] = int(time.time())
+			self.app.settings['sample'] = int(time.time())
 		if (os.path.exists(directory+"/"+filename)):
 			self.app.settings['sample'] = samplename + str(int(time.time()))
