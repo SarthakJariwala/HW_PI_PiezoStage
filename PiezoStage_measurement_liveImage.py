@@ -5,6 +5,7 @@ import numpy as np
 import time
 import pickle
 import os.path
+from pyqtgraph.Qt import QtGui, QtCore
 
 class PiezoStageMeasureLive(Measurement):
 
@@ -77,7 +78,7 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.y_step.connect_to_widget(self.ui.y_step_doubleSpinBox)
 		self.settings.x_clicked.connect_to_widget(self.ui.x_clicked_doubleSpinBox)
 		self.settings.y_clicked.connect_to_widget(self.ui.y_clicked_doubleSpinBox)
-		self.ui.move_to_selected_pushButton.connect(self.move_to_selected)
+		self.ui.move_to_selected_pushButton.clicked.connect(self.move_to_selected)
 
 		self.spec_hw.settings.intg_time.connect_to_widget(self.ui.intg_time_doubleSpinBox)
 		self.spec_hw.settings.correct_dark_counts.connect_to_widget(self.ui.correct_dark_counts_checkBox)
@@ -122,7 +123,7 @@ class PiezoStageMeasureLive(Measurement):
 
 		#image on stage plot
 		self.img_item = pg.ImageItem()
-		self.stage_plot.addItem(img_item)
+		self.stage_plot.addItem(self.img_item)
 
 		#arrow showing stage location
 		self.current_stage_pos_arrow = pg.ArrowItem()
