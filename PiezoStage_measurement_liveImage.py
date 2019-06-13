@@ -38,6 +38,12 @@ class PiezoStageMeasureLive(Measurement):
 
 		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=.001)
 		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=.001)
+
+
+
+		self.settings.New('x_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
+		self.settings.New('y_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
+		
 		
 		# Define how often to update display during a run
 		self.display_update_period = 0.1 
@@ -47,6 +53,8 @@ class PiezoStageMeasureLive(Measurement):
 		self.pi_device_hw = self.app.hardware['piezostage']
 		
 		self.spec_measure = self.app.measurements['oceanoptics_measure']
+
+		self.scan_complete = False
 
 	def setup_figure(self):
 		"""
@@ -67,7 +75,10 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.y_size.connect_to_widget(self.ui.y_size_doubleSpinBox)
 		self.settings.x_step.connect_to_widget(self.ui.x_step_doubleSpinBox)
 		self.settings.y_step.connect_to_widget(self.ui.y_step_doubleSpinBox)
-		
+		self.settings.x_clicked.connect_to_widget(self.ui.x_clicked_doubleSpinBox)
+		self.settings.y_clicked.connect_to_widget(self.ui.y_clicked_doubleSpinBox)
+		self.ui.move_to_selected_pushButton.connect(self.move_to_selected)
+
 		self.spec_hw.settings.intg_time.connect_to_widget(self.ui.intg_time_doubleSpinBox)
 		self.spec_hw.settings.correct_dark_counts.connect_to_widget(self.ui.correct_dark_counts_checkBox)
 		self.spec_measure.settings.scans_to_avg.connect_to_widget(self.ui.scans_to_avg_spinBox)
@@ -117,20 +128,55 @@ class PiezoStageMeasureLive(Measurement):
 		self.current_stage_pos_arrow = pg.ArrowItem()
 		self.current_stage_pos_arrow.setZValue(100)
 		self.stage_plot.addItem(self.current_stage_pos_arrow)
-
-#	if hasattr(self, 'stage'):
 		self.pi_device_hw.settings.x_position.updated_value.connect(self.update_arrow_pos, QtCore.Qt.UniqueConnection)
 		self.pi_device_hw.settings.y_position.updated_value.connect(self.update_arrow_pos, QtCore.Qt.UniqueConnection)
 
+		#Define crosshairs that will show up after scan, event handling.
+		self.vLine = pg.InfiniteLine(angle=90, movable=False, pen='w')
+		self.hLine = pg.InfiniteLine(angle=0, movable=False, pen='w')
+		proxy = pg.SignalProxy(self.stage_plot.scene().sigMouseMoved, rateLimit=60, slot=self.chMove) #connect plot item to mouse moved, which handles crosshair movement
+		self.stage_plot.scene().sigMouseClicked.connect(self.chClick)
 
+	def chClick(self, event):
+		'''
+		Handle crosshair clicking, which toggles movement on and off.
+		'''
+		items = self.stage_plot.scene().items(event.scenePos()) #get items at clicked position
+		if (self.vLine in items or hLine in items): #if crosshair is clicked, toggle movement
+			self.move_ch = not self.move_ch
+		if not self.move_ch: #if crosshair has been dropped, update movement
+			ch_pos = self.stage_plot.vb.mapSceneToView(pos)
+			self.settings['x_clicked'] = ch_pos[0]
+			self.settings['y_clicked'] = ch_pos[1]
+
+	def chMove(self, event):
+		'''
+		Handle crosshair movement. Crosshair will only move with mouse if toggled on.
+		'''
+		pos = event[0]
+		if self.stage_plot.sceneBoundingRect().contains(pos): #check if mouse within bounds
+			mousePoint = self.stage_plot.vb.mapSceneToView(pos) #convert device coordinates to scene coordinates
+			if self.move_ch: #move crosshair only if toggled on by clicking
+				self.vLine.setPos(mousePoint.x())
+				self.hLine.setPos(mousePoint.y())
+
+	def move_to_selected(self):
+		'''
+		Move stage to position selected by crosshairs.
+		'''
+		if self.scan_complete:
+			x = self.settings['x_clicked']
+			y = self.settings['y_clicked']
+			self.pi_device.MOV(axes=self.axes, values=[x, y])
+			self.pi_device_hw.read_from_hardware()
+
+	
 	def mouse_update_scan_roi(self):
 		'''
 		Update settings to reflect region of interest.
 		'''
 		x0,y0 =  self.scan_roi.pos()
 		w, h =  self.scan_roi.size()
-		print(w)
-		print(h)
 		self.settings['x_start'] = x0
 		self.settings['y_start'] = y0
 		self.settings['x_size'] = w
@@ -173,6 +219,17 @@ class PiezoStageMeasureLive(Measurement):
 			self.img_item.setImage(image=disp_img, autoLevels=True, autoRange=False)
 			#self.imv.setImage(img=disp_img, autoRange=False, autoLevels=True)
 			#self.imv.show()
+
+		if self.scan_complete:
+			stage_plot.addItem(self.hLine)
+			stage_plot.addItem(self.vLine)
+
+			middle_x = self.settings['x_start'] + (self.settings['x_size']/2)
+			middle_y = self.settings['y_start'] + (self.settings['y_size']/2)
+			self.hLine.setPos(middle_y)
+			self.vLine.setPos(middle_x)
+
+
 
 	def run(self):
 		"""
@@ -267,6 +324,7 @@ class PiezoStageMeasureLive(Measurement):
 				 }
 	
 		pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
+		self.scan_complete = True;
 
 	def _read_spectrometer(self):
 		'''
