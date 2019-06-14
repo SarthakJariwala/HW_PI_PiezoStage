@@ -6,6 +6,7 @@ import time
 import pickle
 import os.path
 from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Point import Point
 
 class PiezoStageMeasureLive(Measurement):
 
@@ -40,8 +41,6 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=.001)
 		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=.001)
 
-
-
 		self.settings.New('x_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
 		self.settings.New('y_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
 		
@@ -55,7 +54,7 @@ class PiezoStageMeasureLive(Measurement):
 		
 		self.spec_measure = self.app.measurements['oceanoptics_measure']
 
-		self.scan_complete = False
+		#self.scan_complete = False
 
 	def setup_figure(self):
 		"""
@@ -116,14 +115,29 @@ class PiezoStageMeasureLive(Measurement):
 		self.ui.x_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
 		self.ui.y_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
 
-		#image display container
-		# self.imv = pg.ImageView()
-		# self.imv.getView().setAspectLocked(lock=False, ratio=1)
-		# self.imv.getView().setMouseEnabled(x=True, y=True)
+		#image display container, will show sp
+		self.imv = pg.ImageView()
+		self.imv.getView().setAspectLocked(lock=False, ratio=1)
+		self.imv.getView().setMouseEnabled(x=True, y=True)
 
-		#image on stage plot
+		#histogram for image
+		self.hist_lut = pg.HistogramLUTItem()
+		self.stage_layout.addItem(self.hist_lut)
+
+		#image on stage plot, will show intensity sums
 		self.img_item = pg.ImageItem()
 		self.stage_plot.addItem(self.img_item)
+		
+		#setup image
+		blank = np.zeros((3,3))
+		self.img_item.setImage(image=blank)
+		x_start = int(self.settings['x_start'])
+		y_start = int(self.settings['y_start'])
+		x_size = int(self.settings['x_size'])
+		y_size = int(self.settings['y_size'])
+		self.img_item_rect = QtCore.QRectF(x_start, y_start, x_size, y_size)
+		self.img_item.setRect(self.img_item_rect)
+		self.hist_lut.setImageItem(self.img_item) #setup histogram
 
 		#arrow showing stage location
 		self.current_stage_pos_arrow = pg.ArrowItem()
@@ -133,31 +147,32 @@ class PiezoStageMeasureLive(Measurement):
 		self.pi_device_hw.settings.y_position.updated_value.connect(self.update_arrow_pos, QtCore.Qt.UniqueConnection)
 
 		#Define crosshairs that will show up after scan, event handling.
-		self.vLine = pg.InfiniteLine(angle=90, movable=False, pen='w')
-		self.hLine = pg.InfiniteLine(angle=0, movable=False, pen='w')
-		proxy = pg.SignalProxy(self.stage_plot.scene().sigMouseMoved, rateLimit=60, slot=self.chMove) #connect plot item to mouse moved, which handles crosshair movement
-		self.stage_plot.scene().sigMouseClicked.connect(self.chClick)
+		self.enable_move_ch = False
+		self.vLine = pg.InfiniteLine(angle=90, movable=False, pen='r')
+		self.hLine = pg.InfiniteLine(angle=0, movable=False, pen='r')
+		pg.SignalProxy(self.stage_plot.scene().sigMouseMoved, rateLimit=60, slot=self.ch_move) #connect plot item to mouse moved, which handles crosshair movement
+		self.stage_plot.scene().sigMouseClicked.connect(self.ch_click)
 
-	def chClick(self, event):
+	def ch_click(self, event):
 		'''
 		Handle crosshair clicking, which toggles movement on and off.
 		'''
 		items = self.stage_plot.scene().items(event.scenePos()) #get items at clicked position
-		if (self.vLine in items or hLine in items): #if crosshair is clicked, toggle movement
-			self.move_ch = not self.move_ch
-		if not self.move_ch: #if crosshair has been dropped, update movement
-			ch_pos = self.stage_plot.vb.mapSceneToView(pos)
-			self.settings['x_clicked'] = ch_pos[0]
-			self.settings['y_clicked'] = ch_pos[1]
+		if (self.vLine in items or self.hLine in items): #if crosshair is clicked, toggle movement
+			self.enable_move_ch = not self.enable_move_ch
+		if not self.enable_move_ch: #if crosshair has been dropped, update movement
+			ch_pos = self.stage_plot.vb.mapSceneToView(event.pos()) #convert device coordinates to scene coordinates
+			self.settings['x_clicked'] = ch_pos.x()
+			self.settings['y_clicked'] = ch_pos.y()
 
-	def chMove(self, event):
+	def ch_move(self, event):
 		'''
-		Handle crosshair movement. Crosshair will only move with mouse if toggled on.
+		Handle crosshair movement.
 		'''
 		pos = event[0]
-		if self.stage_plot.sceneBoundingRect().contains(pos): #check if mouse within bounds
+		if self.stage_plot.sceneBoundingRect().contains(pos): #check if mouse within bounds of stage plot
 			mousePoint = self.stage_plot.vb.mapSceneToView(pos) #convert device coordinates to scene coordinates
-			if self.move_ch: #move crosshair only if toggled on by clicking
+			if self.enable_move_ch: #move crosshair only if toggled on by clicking
 				self.vLine.setPos(mousePoint.x())
 				self.hLine.setPos(mousePoint.y())
 
@@ -165,7 +180,7 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		Move stage to position selected by crosshairs.
 		'''
-		if self.scan_complete:
+		if not self.running and hasattr(self, 'pi_device'):
 			x = self.settings['x_clicked']
 			y = self.settings['y_clicked']
 			self.pi_device.MOV(axes=self.axes, values=[x, y])
@@ -216,21 +231,25 @@ class PiezoStageMeasureLive(Measurement):
 			self.plot.plot(self.spec.wavelengths(), self.y, pen='r', clear=True) #plot wavelength vs intensity
 			pg.QtGui.QApplication.processEvents()
 
-			disp_img = self.display_image_map #transpose to use for setImage, which takes 3d array (x, y, intensity)
-			self.img_item.setImage(image=disp_img, autoLevels=True, autoRange=False)
+			sum_disp_img = self.sum_display_image_map #transpose to use for setImage, which takes 3d array (x, y, intensity)
+			self.img_item.setImage(image=sum_disp_img, autoLevels=True, autoRange=False)
+			#self.hist_lut.setImageItem(self.img_item)
+			self.img_item.setRect(self.img_item_rect)
+
+			intensities_disp_img = self.intensities_display_image_map
+			self.imv.setImage(img=intensities_disp_img, autoRange=False, autoLevels=True)
+			self.imv.show()
 			#self.imv.setImage(img=disp_img, autoRange=False, autoLevels=True)
 			#self.imv.show()
 
-		if self.scan_complete:
-			stage_plot.addItem(self.hLine)
-			stage_plot.addItem(self.vLine)
+		if not self.running:
+			self.stage_plot.addItem(self.hLine)
+			self.stage_plot.addItem(self.vLine)
 
 			middle_x = self.settings['x_start'] + (self.settings['x_size']/2)
 			middle_y = self.settings['y_start'] + (self.settings['y_size']/2)
 			self.hLine.setPos(middle_y)
 			self.vLine.setPos(middle_x)
-
-
 
 	def run(self):
 		"""
@@ -277,10 +296,11 @@ class PiezoStageMeasureLive(Measurement):
 		data_array = np.zeros(shape=(self.x_range*self.y_range,2048))
 
 		# Define empty array for image map
-		#self.display_image_map = np.zeros((y_range, x_range), dtype=float)
+		#self.sum_display_image_map = np.zeros((y_range, x_range), dtype=float)
 
 		#Store spectrum for each pixel
-		self.display_image_map = np.zeros((2048, self.x_range, self.y_range), dtype=float)
+		self.sum_display_image_map = np.zeros((self.x_range, self.y_range), dtype=float)
+		self.intensities_display_image_map = np.zeros((2048, self.x_range, self.y_range), dtype=float)
 		
 		# Move to the starting position
 		self.pi_device.MOV(axes=self.axes, values=[x_start,y_start])
@@ -295,7 +315,8 @@ class PiezoStageMeasureLive(Measurement):
 				self._read_spectrometer()
 				data_array[k,:] = self.y
 				#intensities_sum = data_array[k,:].sum()
-				self.display_image_map[:, j, i] = self.y#intensities_sum
+				self.sum_display_image_map[j, i] = self.y.sum()
+				self.intensities_display_image_map[:, j, i] = self.y#intensities_sum
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
 				print(100*((k+1)/(self.x_range*self.y_range)))
@@ -315,6 +336,7 @@ class PiezoStageMeasureLive(Measurement):
 			if self.interrupt_measurement_called:
 				break
 
+		#self.scan_complete = True;
 		save_dict = {"Wavelengths": self.spec.wavelengths(), "Intensities": data_array,
 				 "Scan Parameters":{"X scan start (um)": x_start, "Y scan start (um)": y_start,
 									"X scan size (um)": x_scan_size, "Y scan size (um)": y_scan_size,
@@ -325,8 +347,7 @@ class PiezoStageMeasureLive(Measurement):
 				 }
 	
 		pickle.dump(save_dict, open(self.app.settings['save_dir']+"/"+self.app.settings['sample']+"_raw_PL_spectra_data.pkl", "wb"))
-		self.scan_complete = True;
-
+		
 	def _read_spectrometer(self):
 		'''
 		Read spectrometer according to settings and update self.y (intensities array)
