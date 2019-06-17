@@ -38,8 +38,8 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.New('x_size', dtype=float, initial=1, unit='um', vmin=0)
 		self.settings.New('y_size', dtype=float, initial=1, unit='um', vmin=0)
 
-		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=.001)
-		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=.001)
+		self.settings.New('x_step', dtype=float, initial=1, unit='um', vmin=-99, vmax=99)#vmin=.001)
+		self.settings.New('y_step', dtype=float, initial=1, unit='um', vmin=-99, vmax=99)#vmin=.001)
 
 		self.settings.New('x_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
 		self.settings.New('y_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
@@ -193,8 +193,12 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		x0,y0 =  self.scan_roi.pos()
 		w, h =  self.scan_roi.size()
-		self.settings['x_start'] = x0
-		self.settings['y_start'] = y0
+		if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
+			self.settings['x_start'] = x0 + w
+			self.settings['y_start'] = y0 + h
+		else:
+			self.settings['x_start'] = x0
+			self.settings['y_start'] = y0
 		self.settings['x_size'] = w
 		self.settings['y_size'] = h
 
@@ -202,7 +206,10 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		Update region of interest start position according to spinboxes
 		'''
-		self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start']))
+		if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
+			self.scan_roi.setPos((self.settings['x_start']+self.settings['x_step'], self.settings['y_start']+self.settings['y_step']))
+		else:
+			self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start']))
 
 	def update_roi_size(self):
 		'''
@@ -289,8 +296,8 @@ class PiezoStageMeasureLive(Measurement):
 			x_step = 1#self.settings['x_step'] = 1
 			
 		#number of scans in x and y
-		self.y_range = int(np.ceil(y_scan_size/y_step))
-		self.x_range = int(np.ceil(x_scan_size/x_step))
+		self.y_range = np.abs(int(np.ceil(y_scan_size/y_step)))
+		self.x_range = np.abs(int(np.ceil(x_scan_size/x_step)))
 		
 		# Define empty array for saving intensities
 		data_array = np.zeros(shape=(self.x_range*self.y_range,2048))
@@ -319,7 +326,7 @@ class PiezoStageMeasureLive(Measurement):
 				self.intensities_display_image_map[:, j, i] = self.y#intensities_sum
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
-				print(100*((k+1)/(self.x_range*self.y_range)))
+				print(100*((k+1)/np.abs((self.x_range*self.y_range))))
 				self.pi_device_hw.read_from_hardware()
 				k+=1
 			# TODO
