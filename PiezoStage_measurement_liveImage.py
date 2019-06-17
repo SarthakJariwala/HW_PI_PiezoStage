@@ -114,8 +114,8 @@ class PiezoStageMeasureLive(Measurement):
 		self.ui.y_start_doubleSpinBox.valueChanged.connect(self.update_roi_start)
 		self.ui.x_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
 		self.ui.y_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
-		self.ui.x_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
-		self.ui.y_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
+		#self.ui.x_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
+		#self.ui.y_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
 
 		#image display container, will show sp
 		self.imv = pg.ImageView()
@@ -208,10 +208,10 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		Update region of interest start position according to spinboxes
 		'''
-		if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
-			self.scan_roi.setPos((self.settings['x_start']-self.settings['x_size'], self.settings['y_start']-self.settings['y_size']))
-		else:
-			self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start']))
+		#if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
+		#	self.scan_roi.setPos((self.settings['x_start']-self.settings['x_size'], self.settings['y_start']-self.settings['y_size']))
+		#else:
+		self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start'])) #TODO: fix this to work with negative step values
 
 	def update_roi_size(self):
 		'''
