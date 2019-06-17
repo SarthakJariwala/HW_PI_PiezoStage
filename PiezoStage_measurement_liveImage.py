@@ -117,8 +117,8 @@ class PiezoStageMeasureLive(Measurement):
 		self.ui.y_start_doubleSpinBox.valueChanged.connect(self.update_roi_start)
 		self.ui.x_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
 		self.ui.y_size_doubleSpinBox.valueChanged.connect(self.update_roi_size)
-		#self.ui.x_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
-		#self.ui.y_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
+		self.ui.x_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
+		self.ui.y_step_doubleSpinBox.valueChanged.connect(self.update_roi_start)
 
 		#image display container, will show sp
 		self.imv = pg.ImageView()
@@ -210,12 +210,16 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		x0,y0 =  self.scan_roi.pos()
 		w, h =  self.scan_roi.size()
-		if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
-			self.settings['x_start'] = x0 + w
-			self.settings['y_start'] = y0 + h
-		else:
+		if self.settings['x_step'] > 0: 
 			self.settings['x_start'] = x0
+		else: 
+			self.settings['x_start'] = x0 + w
+
+		if self.settings['y_step'] > 0:
 			self.settings['y_start'] = y0
+		else:
+			self.settings['y_start'] = y0 + h 
+
 		self.settings['x_size'] = w
 		self.settings['y_size'] = h
 
@@ -223,11 +227,13 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		Update region of interest start position according to spinboxes
 		'''
-		if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
-			self.scan_roi.setPos((self.settings['x_start']+self.settings['x_size'], self.settings['y_start']+self.settings['y_size']))
-
-		else:
-			self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start'])) #TODO: fix this to work with negative step values
+		x_roi = self.settings['x_start'] #default start values that work with positive x and y steps
+		y_roi = self.settings['y_start']
+		if self.settings['x_step'] < 0:
+			x_roi = self.settings['x_start'] - self.settings['x_size']
+		if self.settings['y_step'] < 0:
+			y_roi = self.settings['y_start'] - self.settings['y_size']
+		self.scan_roi.setPos(x_roi, y_roi)
 
 	def update_roi_size(self):
 		'''
