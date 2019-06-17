@@ -257,7 +257,7 @@ class PiezoStageMeasureLive(Measurement):
 		This function runs repeatedly and automatically during the measurement run.
 		its update frequency is defined by self.display_update_period
 		"""
-		self.img_item.setPos(self.settings['x_start'], self.settings['y_start'])
+		self.img_item.setPos(self.scan_roi.pos())
 		if hasattr(self, 'spec') and hasattr(self, 'pi_device') and hasattr(self, 'y'): #first, check if setup has happened
 			#plot wavelengths vs intensity
 			self.plot.plot(self.spec.wavelengths(), self.y, pen='r', clear=True) #plot wavelength vs intensity
@@ -346,8 +346,17 @@ class PiezoStageMeasureLive(Measurement):
 					break
 				self._read_spectrometer()
 				data_array[k,:] = self.y
-				self.sum_display_image_map[j, i] = self.y.sum()
-				self.intensities_display_image_map[:, j, i] = self.y#intensities_sum
+
+				#make sure the right indices of image arrays are updated
+				index_x = j
+				index_y = i
+				if x_step < 0:
+					index_x = self.x_range - j - 1
+				if y_step < 0:
+					index_y = self.y_range - i - 1
+
+				self.sum_display_image_map[index_x, index_y] = self.y.sum()
+				self.intensities_display_image_map[:, index_x, index_y] = self.y#intensities_sum
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
 				#self.ui.progressBar.setValue(np.floor(100*((k+1)/(x_range*y_range))))
 				print(100*((k+1)/np.abs((self.x_range*self.y_range))))
