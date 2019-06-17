@@ -158,10 +158,11 @@ class PiezoStageMeasureLive(Measurement):
 		# pg.SignalProxy(self.stage_plot.scene().sigMouseMoved, rateLimit=60, slot=self.ch_move) #connect plot item to mouse moved, which handles crosshair movement
 		self.stage_plot.scene().sigMouseClicked.connect(self.ch_click)
 
-		self.hLine.setPos(50)
-		self.vLine.setPos(50)
-		self.stage_plot.addItem(self.hLine)
-		self.stage_plot.addItem(self.vLine)
+		##crosshair test code
+		#self.hLine.setPos(50)
+		#self.vLine.setPos(50)
+		#self.stage_plot.addItem(self.hLine)
+		#self.stage_plot.addItem(self.vLine)
 
 	def ch_click(self, event):
 		'''
