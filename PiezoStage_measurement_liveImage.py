@@ -54,7 +54,7 @@ class PiezoStageMeasureLive(Measurement):
 		
 		self.spec_measure = self.app.measurements['oceanoptics_measure']
 
-		#self.scan_complete = False
+		self.scan_complete = False
 
 	def setup_figure(self):
 		"""
@@ -131,12 +131,12 @@ class PiezoStageMeasureLive(Measurement):
 		#setup image
 		blank = np.zeros((3,3))
 		self.img_item.setImage(image=blank)
-		x_start = int(self.settings['x_start'])
-		y_start = int(self.settings['y_start'])
-		x_size = int(self.settings['x_size'])
-		y_size = int(self.settings['y_size'])
-		self.img_item_rect = QtCore.QRectF(x_start, y_start, x_size, y_size)
-		self.img_item.setRect(self.img_item_rect)
+		#x_start = int(self.settings['x_start'])
+		#y_start = int(self.settings['y_start'])
+		#x_size = int(self.settings['x_size'])
+		#y_size = int(self.settings['y_size'])
+		#self.img_item_rect = QtCore.QRectF(x_start, y_start, x_size, y_size)
+		#self.img_item.setRect(self.img_item_rect)
 		self.hist_lut.setImageItem(self.img_item) #setup histogram
 
 		#arrow showing stage location
@@ -180,7 +180,7 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		Move stage to position selected by crosshairs.
 		'''
-		if not self.running and hasattr(self, 'pi_device'):
+		if self.scan_complete and hasattr(self, 'pi_device'):
 			x = self.settings['x_clicked']
 			y = self.settings['y_clicked']
 			self.pi_device.MOV(axes=self.axes, values=[x, y])
@@ -232,9 +232,9 @@ class PiezoStageMeasureLive(Measurement):
 			pg.QtGui.QApplication.processEvents()
 
 			sum_disp_img = self.sum_display_image_map #transpose to use for setImage, which takes 3d array (x, y, intensity)
-			self.img_item.setImage(image=sum_disp_img, autoLevels=True, autoRange=False)
+			self.img_item.setImage(sum_disp_img)#image=sum_disp_img, autoLevels=True, autoRange=False)
 			#self.hist_lut.setImageItem(self.img_item)
-			self.img_item.setRect(self.img_item_rect)
+			#self.img_item.setRect(self.img_item_rect)
 
 			intensities_disp_img = self.intensities_display_image_map
 			self.imv.setImage(img=intensities_disp_img, autoRange=False, autoLevels=True)
@@ -242,7 +242,7 @@ class PiezoStageMeasureLive(Measurement):
 			#self.imv.setImage(img=disp_img, autoRange=False, autoLevels=True)
 			#self.imv.show()
 
-		if not self.running:
+		if self.scan_complete:
 			self.stage_plot.addItem(self.hLine)
 			self.stage_plot.addItem(self.vLine)
 
@@ -336,7 +336,7 @@ class PiezoStageMeasureLive(Measurement):
 			if self.interrupt_measurement_called:
 				break
 
-		#self.scan_complete = True;
+		self.scan_complete = True;
 		save_dict = {"Wavelengths": self.spec.wavelengths(), "Intensities": data_array,
 				 "Scan Parameters":{"X scan start (um)": x_start, "Y scan start (um)": y_start,
 									"X scan size (um)": x_scan_size, "Y scan size (um)": y_scan_size,
