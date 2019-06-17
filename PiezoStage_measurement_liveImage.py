@@ -43,6 +43,8 @@ class PiezoStageMeasureLive(Measurement):
 
 		self.settings.New('x_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
 		self.settings.New('y_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
+
+		self.settings.New('lock_position', dtype=bool, initial=False)
 		
 		
 		# Define how often to update display during a run
@@ -77,6 +79,7 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.y_step.connect_to_widget(self.ui.y_step_doubleSpinBox)
 		self.settings.x_clicked.connect_to_widget(self.ui.x_clicked_doubleSpinBox)
 		self.settings.y_clicked.connect_to_widget(self.ui.y_clicked_doubleSpinBox)
+		self.settings.lock_position.connect_to_widget(self.ui.lock_position_checkBox)
 		self.ui.move_to_selected_pushButton.clicked.connect(self.move_to_selected)
 
 		self.spec_hw.settings.intg_time.connect_to_widget(self.ui.intg_time_doubleSpinBox)
@@ -149,34 +152,46 @@ class PiezoStageMeasureLive(Measurement):
 		self.pi_device_hw.settings.y_position.updated_value.connect(self.update_arrow_pos, QtCore.Qt.UniqueConnection)
 
 		#Define crosshairs that will show up after scan, event handling.
-		self.enable_move_ch = False
+		#self.enable_move_ch = False
 		self.vLine = pg.InfiniteLine(angle=90, movable=False, pen='r')
 		self.hLine = pg.InfiniteLine(angle=0, movable=False, pen='r')
-		pg.SignalProxy(self.stage_plot.scene().sigMouseMoved, rateLimit=60, slot=self.ch_move) #connect plot item to mouse moved, which handles crosshair movement
+		# pg.SignalProxy(self.stage_plot.scene().sigMouseMoved, rateLimit=60, slot=self.ch_move) #connect plot item to mouse moved, which handles crosshair movement
 		self.stage_plot.scene().sigMouseClicked.connect(self.ch_click)
+
+		self.hLine.setPos(50)
+		self.vLine.setPos(50)
+		self.stage_plot.addItem(self.hLine)
+		self.stage_plot.addItem(self.vLine)
 
 	def ch_click(self, event):
 		'''
 		Handle crosshair clicking, which toggles movement on and off.
 		'''
-		items = self.stage_plot.scene().items(event.scenePos()) #get items at clicked position
-		if (self.vLine in items or self.hLine in items): #if crosshair is clicked, toggle movement
-			self.enable_move_ch = not self.enable_move_ch
-		if not self.enable_move_ch: #if crosshair has been dropped, update movement
-			ch_pos = self.stage_plot.vb.mapSceneToView(event.pos()) #convert device coordinates to scene coordinates
-			self.settings['x_clicked'] = ch_pos.x()
-			self.settings['y_clicked'] = ch_pos.y()
+		pos = event.scenePos()
+		if not self.settings['lock_position'] and self.stage_plot.sceneBoundingRect().contains(pos):
+			mousePoint = self.stage_plot.vb.mapSceneToView(pos)
+			self.vLine.setPos(mousePoint.x())
+			self.hLine.setPos(mousePoint.y())
+			self.settings['x_clicked'] = mousePoint.x()
+			self.settings['y_clicked'] = mousePoint.y()
+		#items = self.stage_plot.scene().items(pos) #get items at clicked position
+		# if (self.vLine in items or self.hLine in items): #if crosshair is clicked, toggle movement
+		# 	self.enable_move_ch = not self.enable_move_ch
+		# if not self.enable_move_ch: #if crosshair has been dropped, update movement
+		# 	ch_pos = self.stage_plot.vb.mapSceneToView(event.pos()) #convert device coordinates to scene coordinates
+		# 	self.settings['x_clicked'] = ch_pos.x()
+		# 	self.settings['y_clicked'] = ch_pos.y()
 
-	def ch_move(self, event):
-		'''
-		Handle crosshair movement.
-		'''
-		pos = event[0]
-		if self.stage_plot.sceneBoundingRect().contains(pos): #check if mouse within bounds of stage plot
-			mousePoint = self.stage_plot.vb.mapSceneToView(pos) #convert device coordinates to scene coordinates
-			if self.enable_move_ch: #move crosshair only if toggled on by clicking
-				self.vLine.setPos(mousePoint.x())
-				self.hLine.setPos(mousePoint.y())
+	# def ch_move(self, event):
+	# 	'''
+	# 	Handle crosshair movement.
+	# 	'''
+	# 	pos = event[0]
+	# 	if self.stage_plot.sceneBoundingRect().contains(pos): #check if mouse within bounds of stage plot
+	# 		mousePoint = self.stage_plot.vb.mapSceneToView(pos) #convert device coordinates to scene coordinates
+	# 		if self.enable_move_ch: #move crosshair only if toggled on by clicking
+	# 			self.vLine.setPos(mousePoint.x())
+	# 			self.hLine.setPos(mousePoint.y())
 
 	def move_to_selected(self):
 		'''
@@ -208,10 +223,11 @@ class PiezoStageMeasureLive(Measurement):
 		'''
 		Update region of interest start position according to spinboxes
 		'''
-		#if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
-		#	self.scan_roi.setPos((self.settings['x_start']-self.settings['x_size'], self.settings['y_start']-self.settings['y_size']))
-		#else:
-		self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start'])) #TODO: fix this to work with negative step values
+		if self.settings['x_step'] < 0 and self.settings['y_step'] < 0:
+			self.scan_roi.setPos((self.settings['x_start']+self.settings['x_size'], self.settings['y_start']+self.settings['y_size']))
+
+		else:
+			self.scan_roi.setPos((self.settings['x_start'], self.settings['y_start'])) #TODO: fix this to work with negative step values
 
 	def update_roi_size(self):
 		'''
