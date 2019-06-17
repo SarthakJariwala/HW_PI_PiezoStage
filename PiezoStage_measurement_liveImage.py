@@ -271,8 +271,6 @@ class PiezoStageMeasureLive(Measurement):
 			intensities_disp_img = self.intensities_display_image_map
 			self.imv.setImage(img=intensities_disp_img, autoRange=False, autoLevels=True)
 			self.imv.show()
-			#self.imv.setImage(img=disp_img, autoRange=False, autoLevels=True)
-			#self.imv.show()
 
 		if self.scan_complete:
 			self.stage_plot.addItem(self.hLine)
@@ -293,6 +291,8 @@ class PiezoStageMeasureLive(Measurement):
 		"""
 		self.check_filename()
 		
+		self.scan_complete = False
+
 		self.pi_device = self.pi_device_hw.pi_device
 		self.spec = self.spec_hw.spec
 		self.axes = self.pi_device_hw.axes
@@ -346,7 +346,6 @@ class PiezoStageMeasureLive(Measurement):
 					break
 				self._read_spectrometer()
 				data_array[k,:] = self.y
-				#intensities_sum = data_array[k,:].sum()
 				self.sum_display_image_map[j, i] = self.y.sum()
 				self.intensities_display_image_map[:, j, i] = self.y#intensities_sum
 				self.pi_device.MVR(axes=self.axes[0], values=[x_step])
@@ -363,7 +362,6 @@ class PiezoStageMeasureLive(Measurement):
 				self.pi_device.MVR(axes=self.axes[1], values=[y_step])
 				self.pi_device.MOV(axes=self.axes[0], values=[x_start])
 				self.pi_device_hw.read_from_hardware()
-				#self.pi_device_hw.read_from_hardware()
 
 			if self.interrupt_measurement_called:
 				break
