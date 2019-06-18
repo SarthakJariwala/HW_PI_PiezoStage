@@ -45,6 +45,7 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.New('y_clicked', dtype=float, initial=0, unit='um', vmin=0, vmax=100, ro=True)
 
 		self.settings.New('lock_position', dtype=bool, initial=False)
+		self.settings.New('save_positions', dtype=bool, initial=False)
 		
 		
 		# Define how often to update display during a run
@@ -57,6 +58,9 @@ class PiezoStageMeasureLive(Measurement):
 		self.spec_measure = self.app.measurements['oceanoptics_measure']
 
 		self.scan_complete = False
+
+		self.selected_positions = np.zeros((1000, 2))
+		self.selected_count = 0
 
 	def setup_figure(self):
 		"""
@@ -80,7 +84,9 @@ class PiezoStageMeasureLive(Measurement):
 		self.settings.x_clicked.connect_to_widget(self.ui.x_clicked_doubleSpinBox)
 		self.settings.y_clicked.connect_to_widget(self.ui.y_clicked_doubleSpinBox)
 		self.settings.lock_position.connect_to_widget(self.ui.lock_position_checkBox)
+		self.settings.save_positions.connect_to_widget(self.ui.save_positions_checkBox)
 		self.ui.move_to_selected_pushButton.clicked.connect(self.move_to_selected)
+		self.ui.export_positions_pushButton.clicked.connect(self.export_positions)
 
 		self.spec_hw.settings.intg_time.connect_to_widget(self.ui.intg_time_doubleSpinBox)
 		self.spec_hw.settings.correct_dark_counts.connect_to_widget(self.ui.correct_dark_counts_checkBox)
@@ -175,6 +181,11 @@ class PiezoStageMeasureLive(Measurement):
 			self.hLine.setPos(mousePoint.y())
 			self.settings['x_clicked'] = mousePoint.x()
 			self.settings['y_clicked'] = mousePoint.y()
+			if self.settings['save_positions']:
+				self.selected_positions[self.selected_count, 0] = mousePoint.x()
+				self.selected_positions[self.selected_count, 1] = mousePoint.y()
+				self.selected_count += 1
+
 		#items = self.stage_plot.scene().items(pos) #get items at clicked position
 		# if (self.vLine in items or self.hLine in items): #if crosshair is clicked, toggle movement
 		# 	self.enable_move_ch = not self.enable_move_ch
@@ -193,6 +204,10 @@ class PiezoStageMeasureLive(Measurement):
 	# 		if self.enable_move_ch: #move crosshair only if toggled on by clicking
 	# 			self.vLine.setPos(mousePoint.x())
 	# 			self.hLine.setPos(mousePoint.y())
+
+	def export_positions(self):
+		self.check_filename("_selected_positions.txt")
+		np.savetxt(self.app['sample'] + "_selected_positions.txt", self.selected_positions, fmt='%f')
 
 	def move_to_selected(self):
 		'''
@@ -271,13 +286,15 @@ class PiezoStageMeasureLive(Measurement):
 			intensities_disp_img = self.intensities_display_image_map
 			self.imv.setImage(img=intensities_disp_img, autoRange=False, autoLevels=True)
 			self.imv.show()
+			self.imv.window().setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False) #disable closing image view window
 
 		if self.scan_complete:
 			self.stage_plot.addItem(self.hLine)
 			self.stage_plot.addItem(self.vLine)
 
-			middle_x = self.settings['x_start'] + (self.settings['x_size']/2)
-			middle_y = self.settings['y_start'] + (self.settings['y_size']/2)
+			x, y = self.scan_roi.pos()
+			middle_x = x + self.settings['x_size']/2
+			middle_y = y + self.settings['y_size']/2
 			self.hLine.setPos(middle_y)
 			self.vLine.setPos(middle_x)
 
@@ -289,7 +306,7 @@ class PiezoStageMeasureLive(Measurement):
 
 		Runs until scan is completed or interrupted.
 		"""
-		self.check_filename()
+		self.check_filename("_raw_PL_spectra_data.pkl")
 		
 		self.scan_complete = False
 
@@ -403,12 +420,12 @@ class PiezoStageMeasureLive(Measurement):
 				Int_array[:,i] = data[1]
 				self.y = np.mean(Int_array, axis=-1)
 
-	def check_filename(self):
+	def check_filename(self, append):
 		'''
 		If no sample name given or duplicate sample name given, fix the problem by appending a unique number.
 		'''
 		samplename = self.app.settings['sample']
-		filename = samplename + "_raw_PL_spectra_data.pkl"
+		filename = samplename + append
 		directory = self.app.settings['save_dir']
 		if samplename == "":
 			self.app.settings['sample'] = int(time.time())
