@@ -140,8 +140,8 @@ class PiezoStageMeasureLive(Measurement):
 		self.stage_plot.addItem(self.img_item)
 		
 		#setup image
-		blank = np.zeros((3,3))
-		self.img_item.setImage(image=blank)
+		# = np.zeros((3,3))
+		#self.img_item.setImage(image=blank)
 		#x_start = int(self.settings['x_start'])
 		#y_start = int(self.settings['y_start'])
 		#x_size = int(self.settings['x_size'])
@@ -207,7 +207,8 @@ class PiezoStageMeasureLive(Measurement):
 
 	def export_positions(self):
 		self.check_filename("_selected_positions.txt")
-		np.savetxt(self.app['sample'] + "_selected_positions.txt", self.selected_positions, fmt='%f')
+		trimmed = self.selected_positions[~np.all(self.selected_positions == 0, axis=1)] #get rid of empty rows
+		np.savetxt(self.app.settings['save_dir']+"/"+ self.app.settings['sample'] + "_selected_positions.txt", self.selected_positions, fmt='%f')
 
 	def move_to_selected(self):
 		'''
@@ -423,6 +424,7 @@ class PiezoStageMeasureLive(Measurement):
 	def check_filename(self, append):
 		'''
 		If no sample name given or duplicate sample name given, fix the problem by appending a unique number.
+		append - string to add to sample name (including file extension)
 		'''
 		samplename = self.app.settings['sample']
 		filename = samplename + append
